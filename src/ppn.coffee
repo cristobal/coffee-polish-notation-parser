@@ -1,11 +1,15 @@
 ###
-	Polish Pref	ix Notation Parser
+	Polish Prefix Notation Parser
 ###
+
+# TODO: Support for ^, log, %
+# TODO: Support for other extra math functions
+# TODO: Throw errors on unterminated/not matching/missing parens in expr ()
 
 # PPN Module
 PPN = {}
 
-# Parse string into a plain array ast
+# Parse string into a plain ast array
 PPN.parse = (string) ->
 	n      = string.length - 1
 	ast    = []
@@ -55,11 +59,50 @@ PPN.parse = (string) ->
 
 	ast
 
+
 # Run the ast array
 PPN.run = (ast) ->
-	ast
+	OPERATORS = ///(
+		\+|\-|\*|\/
+	)///
 
+	EXPR_START = "("
+	EXPR_STOP  = ")"
+
+	stack = []
+	args  = []
+
+	apply_operator = (op, args) ->
+  	args.reduce (a, b) ->
+  		eval("#{a} #{op} #{b}")
+
+	n = ast.length - 1
+	for i in [n .. 0]
+		symbol = ast[i]
+
+		if symbol is EXPR_START
+			while (arg = stack.pop()) and (arg isnt EXPR_START)
+				args.push(arg)
+
+			stack.push(args[0])
+
+		else if OPERATORS.test(symbol)
+			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
+				args.push(arg)
+
+			stack.push(arg) if (arg is EXPR_STOP)
+			stack.push(
+				apply_operator(symbol, args))
+
+		else
+			stack.push(symbol)
+
+		while args.length
+			args.pop()
+
+	stack[0]
+
+# Evualuate expression
 PPN.eval = (string) ->
 	@run(@parse (string))
 
-console.log(PPN.eval "- 3 +  1  22")
