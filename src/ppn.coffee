@@ -2,7 +2,8 @@
 	Polish Prefix Notation Parser
 ###
 
-# TODO: Support for ^, log, %
+# TODO: Support for ^, %
+# TODO: Support for multiline \n \r\n
 # TODO: Support for other extra math functions
 # TODO: Throw errors on unterminated/not matching/missing parens in expr ()
 
@@ -101,6 +102,7 @@ PPN.run = (ast) ->
 			args.pop()
 
 	stack[0]
+
 
 # Evualuate expression
 PPN.eval = (string) ->
