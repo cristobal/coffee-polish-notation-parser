@@ -2,13 +2,14 @@
 	Polish Prefix Notation Parser
 ###
 
-# TODO: Support for ^, %
 # TODO: Support for multiline \n \r\n
-# TODO: Support for other extra math functions
+# TODO: Support for other custom math functions
 # TODO: Throw errors on unterminated/not matching/missing parens in expr ()
+# TODO: Add functions defined in Wikipedia negation, conj etc...
 
 # PPN Module
 PPN = {}
+PPN.__functions = {}
 
 # Parse string into a plain ast array
 PPN.parse = (string) ->
@@ -17,7 +18,7 @@ PPN.parse = (string) ->
 	start  = 0
 	flag   = off
 
-	SPACE = " "
+	SPACE   = " "
 	PARENS_LEFT  = "("
 	PARENS_RIGHT = ")"
 
@@ -60,9 +61,9 @@ PPN.parse = (string) ->
 
 	ast
 
-
 # Run the ast array
 PPN.run = (ast) ->
+	# Only base aritmetich math operators +-*/
 	OPERATORS = ///(
 		\+|\-|\*|\/
 	)///
@@ -74,9 +75,14 @@ PPN.run = (ast) ->
 	args  = []
 
 	apply_operator = (op, args) ->
-  	args.reduce (a, b) ->
-  		eval("#{a} #{op} #{b}")
+		args.reduce (a, b) ->
+			eval("#{a} #{op} #{b}")
 
+	apply_function = (fun, args) ->
+		args.reduce (a, b) ->
+			fun(a, b)
+
+	console.log @__functions
 	n = ast.length - 1
 	for i in [n .. 0]
 		symbol = ast[i]
@@ -87,6 +93,14 @@ PPN.run = (ast) ->
 
 			stack.push(args[0])
 
+		else if @__functions[symbol]?
+			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
+				args.push(arg)
+
+			stack.push(arg) if (arg is EXPR_STOP)
+			stack.push(
+				apply_function(@__functions[symbol], args))
+
 		else if OPERATORS.test(symbol)
 			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
 				args.push(arg)
@@ -94,6 +108,8 @@ PPN.run = (ast) ->
 			stack.push(arg) if (arg is EXPR_STOP)
 			stack.push(
 				apply_operator(symbol, args))
+
+
 
 		else
 			stack.push(symbol)
@@ -108,3 +124,15 @@ PPN.run = (ast) ->
 PPN.eval = (string) ->
 	@run(@parse (string))
 
+# Define function by name
+PPN.defun = (name, fun) ->
+	@__functions[name] = fun
+
+# Undefine function by name
+PPN.undefun = (name) ->
+	results = {}
+	for key, fun of @__functions when key isnt name
+		results[key] = fun
+
+	@__functions = null
+	@__functions = results
