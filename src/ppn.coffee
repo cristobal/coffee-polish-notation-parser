@@ -2,7 +2,8 @@
 	Polish Prefix Notation Parser
 ###
 
-# TODO: Throw errors on unterminated/not matching/missing parens in expr ()
+# TODO: Handle when case we reach expr start and last symbol
+#       was neither operator or function
 # TODO: Add functions defined in Wikipedia negation, conj etc...
 
 # PPN Module
@@ -72,11 +73,15 @@ PPN.run = (ast) ->
 		\+|\-|\*|\/
 	)///
 
-	EXPR_START = "("
-	EXPR_STOP  = ")"
+	EXPR_START  = "("
+	EXPR_STOP   = ")"
 
 	stack = []
 	args  = []
+	exprCount =
+		total: 0
+		start: 0
+		stop:  0
 
 	apply_operator = (op, args) ->
 		args.reduce (a, b) ->
@@ -89,37 +94,60 @@ PPN.run = (ast) ->
 	n = ast.length - 1
 	for i in [n .. 0]
 		symbol = ast[i]
+		isFunction  = @__functions[symbol]?
+		isOperator  = OPERATORS.test(symbol)
+		isExprStart = symbol is EXPR_START
+		isExprStop  = symbol is EXPR_STOP
 
-		if symbol is EXPR_START
+		# Counter for expr start/stop
+		if isExprStart
+			exprCount.start += 1
+			exprCount.total -= 1
+		else if isExprStop
+			exprCount.stop  += 1
+			exprCount.total += 1
+
+		# Handle symbols
+		if isExprStart
 			while (arg = stack.pop()) and (arg isnt EXPR_START)
 				args.push(arg)
 
 			stack.push(args[0])
 
-		# TODO: optimize below when all logic in place
-		else if @__functions[symbol]?
-
+		else if isFunction or isOperator
 			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
 				args.push(arg)
 
-			stack.push(arg) if (arg is EXPR_STOP)
+			if isExprStop
+				stack.push(arg)
 
-			stack.push(
-				apply_function(@__functions[symbol], args))
+			try
+				if isFunction
+					result = apply_function(@__functions[symbol], args)
+				else
+					result = apply_operator(symbol, args)
 
-		else if OPERATORS.test(symbol)
-			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
-				args.push(arg)
+			catch error
+				if isFunction
+					throw new Error("Failed to apply the function #{symbol}
+													 with the arguments #{args.join(" ")}")
+				else
+					throw new Error("Failed to apply the operator #{symbol}
+													 with the arguments #{args.join(" ")}")
 
-			stack.push(arg) if (arg is EXPR_STOP)
-			stack.push(
-				apply_operator(symbol, args))
+			stack.push(result)
 
 		else
 			stack.push(symbol)
 
 		while args.length
 			args.pop()
+
+	unmatchedExpr = exprCount.total isnt 0
+	if unmatchedExpr and (exprCount.start > exprCount.stop)
+		throw new Error("Unmatched start expr #{EXPR_START}")
+	else if unmatchedExpr
+		throw new Error("Unmatched stop expr #{EXPR_STOP}")
 
 	stack[0]
 
