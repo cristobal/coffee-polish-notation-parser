@@ -2,8 +2,6 @@
 	Polish Prefix Notation Parser
 ###
 
-# TODO: Support for multiline \n \r\n
-# TODO: Support for other custom math functions
 # TODO: Throw errors on unterminated/not matching/missing parens in expr ()
 # TODO: Add functions defined in Wikipedia negation, conj etc...
 
@@ -18,18 +16,24 @@ PPN.parse = (string) ->
 	start  = 0
 	flag   = off
 
-	SPACE   = " "
 	PARENS_LEFT  = "("
 	PARENS_RIGHT = ")"
+
+	# delimiters
+	# space, tab, carriage return(cr), newline(lf), cr+lf
+	DELIMITERS = ///(
+		\s|\t|\r|\n|\r\n
+	)///
 
 	# loop until no more characters
 	for i in [0 .. n]
 		char = string.charAt(i)
+		isDelimiter = DELIMITERS.test(char)
 
-		# if char is space or parenthesis right and the collect flag is on
+		# if char is a delimiter or parenthesis right and the collect flag is on
 		# we collect the last exp from the substring(start, i).
 		# Finally turn off the collect flag
-		if (char is SPACE or
+		if (isDelimiter or
 			  char is PARENS_RIGHT) and (flag is on)
 			ast.push(
 				string.substring(start, i))
@@ -41,13 +45,13 @@ PPN.parse = (string) ->
 			ast.push(char)
 			continue
 
-		# if char is space continue loop
-		if char is SPACE
+		# if char is a delimiter continue loop
+		if isDelimiter
 			continue
 
-		# if char is not space and is the last char we collect either the
+		# if char is not a delimiter and is the last char we collect either the
 		# last started expression or the last char depending on the collect flag
-		if (char isnt SPACE) and (i is n)
+		if (not isDelimiter) and (i is n)
 			ast.push(
 				if flag then string.substring(start, i + 1) else char
 			)
@@ -82,7 +86,6 @@ PPN.run = (ast) ->
 		args.reduce (a, b) ->
 			fun(a, b)
 
-	console.log @__functions
 	n = ast.length - 1
 	for i in [n .. 0]
 		symbol = ast[i]
@@ -93,11 +96,14 @@ PPN.run = (ast) ->
 
 			stack.push(args[0])
 
+		# TODO: optimize below when all logic in place
 		else if @__functions[symbol]?
+
 			while (arg = stack.pop()) and (arg isnt EXPR_STOP)
 				args.push(arg)
 
 			stack.push(arg) if (arg is EXPR_STOP)
+
 			stack.push(
 				apply_function(@__functions[symbol], args))
 
@@ -108,8 +114,6 @@ PPN.run = (ast) ->
 			stack.push(arg) if (arg is EXPR_STOP)
 			stack.push(
 				apply_operator(symbol, args))
-
-
 
 		else
 			stack.push(symbol)
