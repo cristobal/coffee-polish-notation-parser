@@ -5,6 +5,8 @@
 # TODO: Handle when case we reach expr start and last symbol
 #       was neither operator or function
 # TODO: Add functions defined in Wikipedia negation, conj etc...
+# TODO: Better handling of unmatched expr parens
+# TODO: Handle Line numbers?
 
 # PPN Module
 PPN = {}
